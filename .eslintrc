@@ -1,0 +1,19 @@
+{
+    "extends": "nicjansma",
+    "env": {
+        "node": true,
+        "browser": true,
+        "amd": true
+    },
+    parserOptions: {
+        ecmaVersion: 2017
+    },
+    "rules": {
+        //
+        // Disabled over nicjansma
+        //
+        "no-loop-func": 0,
+        "strict": 0,
+        "no-console": 0
+    }
+}

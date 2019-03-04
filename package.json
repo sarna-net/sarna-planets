@@ -1,0 +1,18 @@
+{
+  "name": "sarna-planets-audit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "planet-audit.js",
+  "dependencies": {
+    "async": "^2.6.1",
+    "eslint": "^5.1.0",
+    "eslint-config-nicjansma": "^1.0.4",
+    "nodemw": "^0.12.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT"
+}

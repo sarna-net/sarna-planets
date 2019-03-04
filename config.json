@@ -1,0 +1,7 @@
+{
+    "protocol": "https",
+    "server": "www.sarna.net",
+    "path": "/wiki",
+    "debug": false,
+    "concurrency": 10
+}
