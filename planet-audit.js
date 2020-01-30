@@ -3,19 +3,21 @@
 //
 // Imports
 //
-var fs = require("fs");
-var MediaWikiBot = require("nodemw");
-var async = require("async");
+const fs = require("fs");
+const MediaWikiBot = require("nodemw");
+const async = require("async");
+const PlanetsLib = require("./planets-lib");
 
 //
 // Constants
 //
-var COORD_REGEX = /^\|\s*coord\s*=\s*([\d.,-]+)\s*:\s*([\d.,-]+).*/gm;
-var PLANET_NAME_REGEX = /([^(]+)/;
-var DIFF_THRESHOLD = 5;
-var PLANET_CHECK = "{{InfoBoxSystem";
-var PARALLEL = 1;
-var DISAMBIGUATION = "disambiguation";
+const COORD_REGEX = /^\|\s*coord\s*=\s*([\d.,-]+)\s*:\s*([\d.,-]+).*/gm;
+const PLANET_NAME_REGEX = /([^(]+)/;
+const DIFF_THRESHOLD = 5;
+const PLANET_CHECK = "{{InfoBoxSystem";
+const PARALLEL = 1;
+const DISAMBIGUATION = "disambiguation";
+const PRETEND = true;
 
 //
 // App
@@ -32,10 +34,11 @@ var output = fs.createWriteStream("sarna-audit.csv", {
 
 async.series(
     [
-        function(cb) {
+        PlanetsLib.creds,
+        function(creds, cb) {
             console.log("Logging in");
 
-            client.logIn("Nicjansma", "oMngY0HdUZLjErVuKP2eh8QutCH_7PtM", cb);
+            client.logIn(creds.username, creds.password, cb);
         },
         function(cb) {
             async.eachLimit(inputSucLines, PARALLEL, function(line, cbEach) {
@@ -45,17 +48,18 @@ async.series(
 
                 const lineSplit = line.split("\t");
 
-                const sucPlanet = lineSplit[1];
-                const sucX = parseFloat(lineSplit[3].replace("\"", "").replace(",", ""), 10);
-                const sucY = parseFloat(lineSplit[4].replace("\"", "").replace(",", ""), 10);
-                const sarnaLink = lineSplit[5];
+                const sucPlanet = lineSplit[PlanetsLib.COL_NAME];
+                const sucX = parseFloat(lineSplit[PlanetsLib.COL_X].replace("\"", "").replace(",", ""), 10);
+                const sucY = parseFloat(lineSplit[PlanetsLib.COL_Y].replace("\"", "").replace(",", ""), 10);
+                const sarnaLink = lineSplit[PlanetsLib.COL_LINK];
 
                 if (!sarnaLink) {
                     return writeResult(output, cbEach, sucPlanet, "",
                         "missing-sarna-link", sucX, sucY, "", "");
                 }
 
-                const sarnaName = sarnaLink.replace("https://www.sarna.net/wiki/", "").replace("http://www.sarna.net/wiki/", "");
+                const sarnaName = sarnaLink.replace("https://www.sarna.net/wiki/", "")
+                    .replace("http://www.sarna.net/wiki/", "");
 
                 const planetNameMatch = PLANET_NAME_REGEX.exec(sucPlanet);
                 if (!planetNameMatch) {
@@ -72,6 +76,8 @@ async.series(
                 client.getArticle(sarnaName, function(err, data) {
                     // error handling
                     if (err) {
+                        console.log("Missing article!");
+
                         return writeResult(output, cbEach, sucPlanet, sarnaName,
                             "missing", sucX, sucY, "", "");
                     }
@@ -108,12 +114,14 @@ async.series(
                             const dataUpdated = data.replace(COORD_REGEX,
                                 `| coord               = ${sucX} : ${sucY}{{e}}`);
 
-                            client.edit(
-                                sarnaName,
-                                dataUpdated,
-                                "Updating Planet coordinates per BattleTechWiki:Project_Planets/Mapping",
-                                true,
-                                cbEach);
+                            if (!PRETEND) {
+                                client.edit(
+                                    sarnaName,
+                                    dataUpdated,
+                                    "Updating Planet coordinates per BattleTechWiki:Project_Planets/Mapping",
+                                    true,
+                                    cbEach);
+                            }
 
                             writeResult(
                                 output,
@@ -139,12 +147,14 @@ async.series(
                             const dataUpdated = data.replace(COORD_REGEX,
                                 `| coord               = ${sucX} : ${sucY}{{e}}`);
 
-                            client.edit(
-                                sarnaName,
-                                dataUpdated,
-                                "Updating Planet coordinates per BattleTechWiki:Project_Planets/Mapping",
-                                true,
-                                cbEach);
+                            if (!PRETEND) {
+                                client.edit(
+                                    sarnaName,
+                                    dataUpdated,
+                                    "Updating Planet coordinates per BattleTechWiki:Project_Planets/Mapping",
+                                    true,
+                                    cbEach);
+                            }
 
                             writeResult(
                                 output,
