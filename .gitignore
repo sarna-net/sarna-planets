@@ -1,2 +1,3 @@
 node_modules/
 sarna-audit.csv*
+creds.json
