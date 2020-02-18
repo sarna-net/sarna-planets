@@ -32,13 +32,15 @@ var output = fs.createWriteStream("sarna-audit.csv", {
     encoding: "utf-8"
 });
 
-async.series(
+async.waterfall(
     [
         PlanetsLib.creds,
         function(creds, cb) {
             console.log("Logging in");
 
-            client.logIn(creds.username, creds.password, cb);
+            client.logIn(creds.username, creds.password, function(err) {
+                cb(err);
+            });
         },
         function(cb) {
             async.eachLimit(inputSucLines, PARALLEL, function(line, cbEach) {
