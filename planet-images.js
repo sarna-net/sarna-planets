@@ -17,6 +17,7 @@ const CAPTION_REGEX = /^\|\s*caption\s*=.*\n/m;
 const PARALLEL = 1;
 const PRETEND = false;
 const SUC_YEAR = 3151;
+const IMAGES_VERSION = "1.1.1";
 
 //
 // Command-Line
@@ -71,6 +72,7 @@ async.waterfall(
                     system.svgFileName = path.join(
                         __dirname,
                         "planet-images",
+                        IMAGES_VERSION,
                         SUC_YEAR.toString(),
                         system.imageName);
                 } else {
@@ -81,6 +83,7 @@ async.waterfall(
                     system.svgFileName = path.join(
                         __dirname,
                         "planet-images",
+                        IMAGES_VERSION,
                         SUC_YEAR.toString(),
                         encodeURIComponent(system.imageName));
                 }
@@ -125,9 +128,16 @@ async.waterfall(
             console.log(`Uploading ${filteredSystems.length} systems's images...`);
 
             async.eachLimit(filteredSystems, PARALLEL, function(system, cbEach) {
-                client.getImageInfo(`File:${system.imageName}`, function(err, imageinfo) {
+                const mwFileName = `File:${system.imageName}`;
+                const imageVersionMeta = `<info:version>${IMAGES_VERSION}</info:version>`;
+
+                client.getImageInfo(mwFileName, function(err, imageinfo) {
                     if (!imageinfo) {
                         console.log(`\t${system.imageName} is missing, uploading`);
+                    } else if (imageinfo &&
+                        imageinfo.exif &&
+                        imageinfo.exif.metadata.indexOf(imageVersionMeta) === -1) {
+                        console.log(`\t${system.imageName} is older version, uploading`);
                     } else {
                         console.log(`\t${system.imageName} already exists`);
 
@@ -135,12 +145,28 @@ async.waterfall(
                         return cbEach(err);
                     }
 
+                    const imageComment = `${system.name} neighboring systems (${SUC_YEAR}) (v${IMAGES_VERSION})`;
+
                     // image missing, upload
                     return client.upload(
                         system.imageName,
                         system.svgFileData,
-                        `${system.name} neighboring systems (${SUC_YEAR})`,
-                        cbEach);
+                        imageComment,
+                        function(err2) {
+                            if (err2) {
+                                return cbEach(err2);
+                            }
+
+                            const imageDescr = imageComment + "\n\n"
+                                + "([[BattleTechWiki:Map Legend|Map Legend]])";
+
+                            return client.edit(
+                                mwFileName,
+                                imageDescr,
+                                "Updating Planet image description per BattleTechWiki:Project_Planets/Mapping",
+                                true,
+                                cbEach);
+                        });
                 });
             },
             function(err) {
