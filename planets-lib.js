@@ -91,12 +91,24 @@ exports.read = function(onlySystem, callback) {
             if (!isNaN(parseInt(onlySystem, 0))) {
                 filteredSystems = systems.slice(0, parseInt(onlySystem, 0));
             } else if (onlySystem) {
-                let foundSystem = systems.find(s => s.name === onlySystem || s.altName === onlySystem);
-                if (!foundSystem) {
-                    return callback(`Could not find system ${onlySystem}`);
-                }
+                if (onlySystem[0] === "+") {
+                    // everything after
+                    onlySystem = onlySystem.substring(1);
 
-                filteredSystems.push(foundSystem);
+                    let foundSystemIdx = systems.findIndex(s => s.name === onlySystem || s.altName === onlySystem);
+                    if (!foundSystemIdx) {
+                        return callback(`Could not find system ${onlySystem}`);
+                    }
+
+                    filteredSystems = systems.slice(foundSystemIdx);
+                } else {
+                    let foundSystem = systems.find(s => s.name === onlySystem || s.altName === onlySystem);
+                    if (!foundSystem) {
+                        return callback(`Could not find system ${onlySystem}`);
+                    }
+
+                    filteredSystems.push(foundSystem);
+                }
             } else {
                 filteredSystems = systems.slice(0);
             }

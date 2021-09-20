@@ -12,7 +12,18 @@ const PlanetsLib = require("./planets-lib");
 //
 var NEARBY_SYSTEMS_REGEX = /([=]=\s*Nearby Systems\s*==)/;
 var NEARBY_PLANETS_REGEX = /([=]=\s*Nearby Planets\s*==)/;
-var REFERENCES_REGEX = /([=]=\s*References\s*==)/;
+var MAP_GALLERY_REGEX = /([=]=\s*Map Gallery\s*==)/;
+var REFERENCES_REGEX = /([=]=\s*References\s*[=]=)/;
+var LINES_TO_REMOVE = [
+    // no more PlanetOverhaul templates
+    /{{PlanetOverhaul.*}}\n/,
+
+    // Map of the InnerSphere bib/ref (non-canonical)
+    /.*IS_3130\.pdf.*\n/,
+    /\*.*<ref.*Map of the Inner Sphere.*<\/ref>\n/
+
+];
+var REDIRECT_TEXT = /#REDIRECT \[\[(.*)\]\]/;
 var PARALLEL = 1;
 var ALWAYS_SHOW = 20;
 var PLANETS_PER_ROW = 4;
@@ -80,6 +91,17 @@ function updateSystem(client, system, systems, callback) {
             return callback && callback("No data");
         }
 
+        var redirectTest = REDIRECT_TEXT.exec(data);
+        if (redirectTest && redirectTest.length) {
+            // redirect detected, follow it
+            var before = system.sarna;
+            system.sarna = redirectTest[1].replace(" ", "_");
+
+            console.log(`  Redirect from ${before} to ${system.sarna}`);
+
+            return updateSystem(client, system, systems, callback);
+        }
+
         var dataBefore = "";
         var dataAfter = "";
         var dataSplit;
@@ -116,6 +138,13 @@ function updateSystem(client, system, systems, callback) {
             }
 
             dataAfter = nearbyAndAfter.substr(nextHeading);
+        }
+
+        if (!MAP_GALLERY_REGEX.test(data)) {
+            console.log("\tAdding a Gallery");
+
+            dataBefore += "\n== Map Gallery ==\n" +
+                '<div class="system-map-gallery"></div>\n\n';
         }
 
         var dataNearby = dataBefore + "== Nearby Systems ==\n";
@@ -212,6 +241,12 @@ function updateSystem(client, system, systems, callback) {
         dataNearby += "|-\n";
         dataNearby += "|}\n\n";
         dataNearby += dataAfter;
+
+        for (var lineRegexp = 0; lineRegexp < LINES_TO_REMOVE.length; lineRegexp++) {
+            if (LINES_TO_REMOVE[lineRegexp].test(dataNearby)) {
+                dataNearby = dataNearby.replace(LINES_TO_REMOVE[lineRegexp], "");
+            }
+        }
 
         if (data === dataNearby) {
             console.log(`\tNo changes for ${system.sarna}`);

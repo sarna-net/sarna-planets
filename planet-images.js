@@ -17,7 +17,10 @@ const CAPTION_REGEX = /^\|\s*caption\s*=.*\n/m;
 const PARALLEL = 1;
 const PRETEND = false;
 const SUC_YEAR = 3151;
-const IMAGES_VERSION = "1.1.1";
+const IMAGES_VERSION = "1.1.2";
+const SKIP_IMAGE_CHECK = true;
+const FORCE_COMMENT_EDIT = false;
+const REDIRECT_TEXT = /#REDIRECT \[\[(.*)\]\]/;
 
 //
 // Command-Line
@@ -131,6 +134,11 @@ async.waterfall(
                 const mwFileName = `File:${system.imageName}`;
                 const imageVersionMeta = `<info:version>${IMAGES_VERSION}</info:version>`;
 
+                if (SKIP_IMAGE_CHECK) {
+                    console.log(`\t${system.imageName} skipping image check`);
+                    return cbEach();
+                }
+
                 client.getImageInfo(mwFileName, function(err, imageinfo) {
                     if (!imageinfo) {
                         console.log(`\t${system.imageName} is missing, uploading`);
@@ -138,6 +146,9 @@ async.waterfall(
                         imageinfo.exif &&
                         imageinfo.exif.metadata.indexOf(imageVersionMeta) === -1) {
                         console.log(`\t${system.imageName} is older version, uploading`);
+                    } else if (FORCE_COMMENT_EDIT) {
+                        // forcing an update to edit comments
+                        console.log(`\t${system.imageName} forcing a comment update`);
                     } else {
                         console.log(`\t${system.imageName} already exists`);
 
@@ -158,7 +169,8 @@ async.waterfall(
                             }
 
                             const imageDescr = imageComment + "\n\n"
-                                + "([[BattleTechWiki:Map Legend|Map Legend]])";
+                                + "([[BattleTechWiki:Map Legend|Map Legend]])" + "\n\n"
+                                + "[[Category:System Maps]]";
 
                             return client.edit(
                                 mwFileName,
@@ -168,6 +180,8 @@ async.waterfall(
                                 cbEach);
                         });
                 });
+
+                return null;
             },
             function(err) {
                 if (err) {
@@ -183,51 +197,7 @@ async.waterfall(
             async.eachLimit(filteredSystems, PARALLEL, function(system, cbEach) {
                 console.log(`Checking ${system.name}: https://www.sarna.net/wiki/${system.sarna}`);
 
-                client.getArticle(system.sarna, function(err, data) {
-                    // error handling
-                    if (err) {
-                        return cbEach("Missing article!");
-                    }
-
-                    //
-                    // Image
-                    //
-                    IMAGE_REGEX.lastIndex = 0;
-
-                    const imageMatch = IMAGE_REGEX.exec(data);
-                    if (!imageMatch || !imageMatch.length) {
-                        return cbEach("Could not find an image");
-                    }
-
-                    let dataUpdated = data.replace(IMAGE_REGEX,
-                        `| image               = ${system.imageName}\n`);
-
-                    //
-                    // Caption
-                    //
-                    CAPTION_REGEX.lastIndex = 0;
-
-                    const captionMatch = CAPTION_REGEX.exec(data);
-                    if (!captionMatch || !captionMatch.length) {
-                        return cbEach("Could not find a caption");
-                    }
-
-                    dataUpdated = dataUpdated.replace(CAPTION_REGEX,
-                        `| caption             = ${system.name} [[#Nearby_Systems|nearby systems]] (${SUC_YEAR})\n`);
-
-                    PlanetsLib.diff(data, dataUpdated);
-
-                    if (!PRETEND) {
-                        return client.edit(
-                            system.sarna,
-                            dataUpdated,
-                            "Updating Planet coordinates per BattleTechWiki:Project_Planets/Mapping",
-                            true,
-                            cbEach);
-                    } else {
-                        return cbEach();
-                    }
-                });
+                updateSystem(client, system, systems, cbEach);
 
                 return null;
             }, function(err) {
@@ -247,3 +217,62 @@ async.waterfall(
         console.log("Complete!");
     }
 );
+
+function updateSystem(client, system, systems, callback) {
+    client.getArticle(system.sarna, function(err, data) {
+        // error handling
+        if (err) {
+            return callback("Missing article!");
+        }
+
+        var redirectTest = REDIRECT_TEXT.exec(data);
+        if (redirectTest && redirectTest.length) {
+            // redirect detected, follow it
+            var before = system.sarna;
+            system.sarna = redirectTest[1].replace(" ", "_");
+
+            console.log(`  Redirect from ${before} to ${system.sarna}`);
+
+            return updateSystem(client, system, systems, callback);
+        }
+
+        //
+        // Image
+        //
+        IMAGE_REGEX.lastIndex = 0;
+
+        const imageMatch = IMAGE_REGEX.exec(data);
+        if (!imageMatch || !imageMatch.length) {
+            return callback("Could not find an image");
+        }
+
+        let dataUpdated = data.replace(IMAGE_REGEX,
+            `| image               = ${system.imageName}\n`);
+
+        //
+        // Caption
+        //
+        CAPTION_REGEX.lastIndex = 0;
+
+        const captionMatch = CAPTION_REGEX.exec(data);
+        if (!captionMatch || !captionMatch.length) {
+            return callback("Could not find a caption");
+        }
+
+        dataUpdated = dataUpdated.replace(CAPTION_REGEX,
+            `| caption             = ${system.name} [[#Nearby_Systems|nearby systems]]\n`);
+
+        PlanetsLib.diff(data, dataUpdated);
+
+        if (!PRETEND) {
+            return client.edit(
+                system.sarna,
+                dataUpdated,
+                "Updating Planet coordinates per BattleTechWiki:Project_Planets/Mapping",
+                true,
+                callback);
+        } else {
+            return callback();
+        }
+    });
+}
