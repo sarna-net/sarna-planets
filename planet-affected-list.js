@@ -39,8 +39,6 @@ async.waterfall(
         if (err) {
             console.error(err);
         }
-
-        console.log("Complete!");
     }
 );
 
@@ -69,7 +67,7 @@ function checkSystem(target, allSystems) {
         s.dist <= maxDistance &&
         s.name !== targetSystemData.name);
 
-    console.log(`${systemsNearby.length} systems found:`);
+    console.log(`${systemsNearby.length} systems found at ${maxDistance} ly:`);
     console.log();
     console.log(systemsNearby.map(s => s.name).join("\n"));
 }
