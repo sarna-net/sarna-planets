@@ -17,8 +17,8 @@ const CAPTION_REGEX = /^\|\s*caption\s*=.*\n/m;
 const PARALLEL = 1;
 const PRETEND = false;
 const SUC_YEAR = 3151;
-const IMAGES_VERSION = "1.1.2";
-const SKIP_IMAGE_CHECK = true;
+const IMAGES_VERSION = "1.1.3";
+const SKIP_IMAGE_CHECK = false;
 const FORCE_COMMENT_EDIT = false;
 const REDIRECT_TEXT = /#REDIRECT \[\[(.*)\]\]/;
 
