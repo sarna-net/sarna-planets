@@ -6,12 +6,11 @@
   "dependencies": {
     "async": "^2.6.1",
     "diff": "^4.0.1",
-    "eslint": "^5.1.0",
+    "eslint": "^8.57.0",
     "eslint-config-nicjansma": "^1.0.4",
     "nodemw": "^0.12.1",
     "prettydiff": "^100.2.6"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
